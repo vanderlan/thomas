@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Vanderlan Gomes",
+  "name": "Thomas API Project Template",
+  "description": "A complete project template for creating a .NET 10 Web API",
+  "classifications": [ "WebApi" ],
+  "identity": "Thomas.Api.Project.Template",
+  "shortName": "thomas-api",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "Thomas",
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "exclude": [ ".vs/**", ".git/**" ]
+        },
+        {
+          "condition": "(systemDatabase == MongoDb)",
+          "exclude": [
+            "src/GeminiCode.Thomas.Infra.Data/Context/**",
+            "src/GeminiCode.Thomas.Infra.Data/Mapping/**",
+            "src/GeminiCode.Thomas.Infra.Data/Migrations/**",
+            "src/GeminiCode.Thomas.Infra.Data/Repository/**",
+            "src/GeminiCode.Thomas.Infra.Data/UnitOfWork/**",
+            "scripts/**"
+          ]
+        },
+        {
+          "condition": "(systemDatabase != MongoDb)",
+          "exclude": [
+            "src/GeminiCode.Thomas.Infra.Data/Mongo/**",
+            "tests/GeminiCode.Thomas.Test/Unit/Infra/Mongo/**"
+          ]
+        }
+      ]
+    }
+  ],
+  "symbols": {
+    "companyName": {
+      "type": "parameter",
+      "replaces": "GeminiCode",
+      "defaultValue": "GeminiCode",
+      "isRequired": true,
+      "fileRename": "GeminiCode"
+    },
+    "companyNameUpper": {
+      "type": "generated",
+      "generator": "casing",
+      "parameters": {
+        "source": "companyName",
+        "toLower": false
+      },
+      "replaces": "GEMINICODE"
+    },
+    "systemDatabase": {
+      "type": "parameter",
+      "description": "The database that be used on project",
+      "datatype": "choice",
+      "allowMultipleValues": true,
+      "enableQuotelessLiterals": true,
+      "choices": [
+        {
+          "choice": "SqlServer",
+          "description": "SqlServer database"
+        },
+        {
+          "choice": "PostgreSql",
+          "description": "PostgreSql database"
+        },
+        {
+          "choice": "MongoDb",
+          "description": "MongoDb database"
+        }
+      ],
+      "defaultValue": "SqlServer"
+    }
+  }
+}

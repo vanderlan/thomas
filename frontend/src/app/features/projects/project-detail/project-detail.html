@@ -1,0 +1,94 @@
+@if (errors().length > 0) {
+  <div class="alert alert--error" role="alert">
+    @for (message of errors(); track $index) {
+      <div>{{ message }}</div>
+    }
+  </div>
+  <a routerLink="/projects" class="btn btn--ghost">← Back to projects</a>
+} @else if (project(); as project) {
+  <header class="page-header">
+    <div>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/projects" class="link">Projects</a>
+        <span aria-hidden="true">/</span>
+        <span>{{ project.name }}</span>
+      </nav>
+      <h1 class="page-title">{{ project.name }}</h1>
+      @if (project.description) {
+        <p class="page-subtitle">{{ project.description }}</p>
+      }
+    </div>
+
+    @if (session.isAdmin()) {
+      <div class="actions">
+        <button type="button" class="btn btn--primary" [disabled]="syncing()" (click)="sync()">
+          {{ syncing() ? 'Syncing…' : '⟳ Sync errors now' }}
+        </button>
+        <a class="btn btn--ghost" [routerLink]="['/projects', project.publicId, 'edit']">Edit</a>
+        <button type="button" class="btn btn--ghost btn--danger-text" (click)="deleteDialog.open()">
+          Delete
+        </button>
+      </div>
+    }
+  </header>
+
+  <section class="card">
+    <dl class="details">
+      <div>
+        <dt>NewRelic id</dt>
+        <dd class="mono">{{ project.newRelicId }}</dd>
+      </div>
+      <div>
+        <dt>GitHub repository</dt>
+        <dd>
+          <a
+            class="link mono"
+            [href]="'https://github.com/' + project.gitHubRepository"
+            target="_blank"
+            rel="noopener"
+          >
+            {{ project.gitHubRepository }}
+          </a>
+        </dd>
+      </div>
+      <div>
+        <dt>Priority branch (PRs)</dt>
+        <dd class="mono">{{ project.priorityBranch }}</dd>
+      </div>
+      <div>
+        <dt>GitHub keys</dt>
+        <dd>{{ project.hasGitHubKeys ? 'Configured' : 'Not configured' }}</dd>
+      </div>
+      <div>
+        <dt>Last sync</dt>
+        <dd [title]="project.lastErrorSyncAt ? (project.lastErrorSyncAt | date: 'medium') : ''">
+          {{ project.lastErrorSyncAt | timeAgo }}
+        </dd>
+      </div>
+      <div>
+        <dt>Created</dt>
+        <dd>{{ project.createdAt | date: 'medium' }}</dd>
+      </div>
+    </dl>
+
+    @if (lastSync(); as summary) {
+      <p class="alert alert--info">
+        Last manual sync ({{ summary.since | date: 'short' }} →
+        {{ summary.until | date: 'short' }}): {{ summary.eventsProcessed }} occurrence(s) processed,
+        {{ summary.newErrors }} new and {{ summary.updatedErrors }} updated error(s).
+      </p>
+    }
+  </section>
+
+  <h2 class="section-title">Knowledge base</h2>
+  <app-error-log-list [projectId]="project.publicId" [embedded]="true" />
+
+  <app-confirm-dialog
+    #deleteDialog
+    title="Delete project"
+    [message]="deleteMessage()"
+    confirmLabel="Delete"
+    [danger]="true"
+    (confirmed)="confirmDelete()"
+  />
+}

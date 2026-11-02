@@ -1,0 +1,23 @@
+﻿using GeminiCode.Thomas.Domain.Core.Authentication;
+using MediatR;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+
+namespace GeminiCode.Thomas.Application.Core.UseCases.Users.Notifications.UserCreated
+{
+    public class UserCreatedNotificationHandler(
+        ILogger<UserCreatedNotificationHandler> logger,
+        ICurrentUser currentUser)
+        : INotificationHandler<UserCreatedNotification>
+    {
+        public async Task Handle(UserCreatedNotification notification, CancellationToken cancellationToken)
+        {
+            logger.LogInformation("A notification {NotificationType} has been received. Notification details: {Notification}. Action performed by: {CurrentUserName}",
+                nameof(UserCreatedNotification),
+                JsonConvert.SerializeObject(notification, Formatting.Indented),
+                currentUser.ToString());
+
+            await Task.CompletedTask;
+        }
+    }
+}

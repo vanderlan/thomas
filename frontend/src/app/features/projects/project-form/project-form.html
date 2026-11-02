@@ -1,0 +1,130 @@
+<header class="page-header">
+  <div>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/projects" class="link">Projects</a>
+      <span aria-hidden="true">/</span>
+      <span>{{ isEdit() ? (project()?.name ?? 'Edit') : 'New project' }}</span>
+    </nav>
+    <h1 class="page-title">{{ isEdit() ? 'Edit project' : 'New project' }}</h1>
+    <p class="page-subtitle">
+      The NewRelic id is used to collect the errors; the GitHub data will be used to open the fix
+      Pull Requests.
+    </p>
+  </div>
+</header>
+
+<section class="card card--form">
+  @if (loading()) {
+    <div class="empty"><span class="spinner" aria-label="Loading"></span></div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="form-grid">
+        <div class="field field--full">
+          <label for="name">Name *</label>
+          <input id="name" type="text" formControlName="name" />
+          @if (invalid('name')) {
+            <span class="field__error">Inform the name</span>
+          }
+        </div>
+
+        <div class="field field--full">
+          <label for="description">Description</label>
+          <textarea id="description" formControlName="description" rows="2"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="newRelicId">NewRelic id *</label>
+          <input
+            id="newRelicId"
+            type="text"
+            formControlName="newRelicId"
+            placeholder="Entity GUID or APM application id"
+            class="mono"
+          />
+          @if (invalid('newRelicId')) {
+            <span class="field__error">Inform the NewRelic id</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="priorityBranch">Priority branch for the PRs *</label>
+          <input id="priorityBranch" type="text" formControlName="priorityBranch" class="mono" />
+          @if (invalid('priorityBranch')) {
+            <span class="field__error">Inform the branch</span>
+          }
+        </div>
+
+        <div class="field field--full">
+          <label for="gitHubRepository">GitHub repository *</label>
+          <input
+            id="gitHubRepository"
+            type="text"
+            formControlName="gitHubRepository"
+            placeholder="owner/repository"
+            class="mono"
+          />
+          @if (invalid('gitHubRepository')) {
+            <span class="field__error">Inform the repository as "owner/repository"</span>
+          }
+        </div>
+
+        <fieldset class="fieldset field--full">
+          <legend>GitHub keys</legend>
+          <p class="text-muted text-sm">
+            @if (isEdit()) {
+              The keys are never displayed. Leave the fields blank to keep the current ones.
+            } @else {
+              A token with permission to read the repository and open Pull Requests.
+            }
+          </p>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="accessToken">Access token {{ isEdit() ? '' : '*' }}</label>
+              <input
+                id="accessToken"
+                type="password"
+                formControlName="accessToken"
+                autocomplete="off"
+                [placeholder]="isEdit() ? '•••••••• (unchanged)' : 'ghp_…'"
+              />
+              @if (invalid('accessToken')) {
+                <span class="field__error">Inform the access token</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="privateKey">Private key (optional)</label>
+              <textarea
+                id="privateKey"
+                formControlName="privateKey"
+                rows="3"
+                autocomplete="off"
+                class="mono"
+              ></textarea>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+
+      @if (errors().length > 0) {
+        <div class="alert alert--error" role="alert">
+          <ul class="alert__list">
+            @for (message of errors(); track $index) {
+              <li>{{ message }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      <div class="form-actions">
+        <a class="btn btn--ghost" [routerLink]="isEdit() ? ['/projects', id()] : ['/projects']">
+          Cancel
+        </a>
+        <button type="submit" class="btn btn--primary" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : isEdit() ? 'Save changes' : 'Create project' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

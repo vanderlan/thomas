@@ -1,0 +1,94 @@
+@if (errors().length > 0) {
+  <div class="alert alert--error" role="alert">
+    @for (message of errors(); track $index) {
+      <div>{{ message }}</div>
+    }
+  </div>
+  <a routerLink="/errors" class="btn btn--ghost">← Back to error logs</a>
+} @else if (errorLog(); as errorLog) {
+  <header class="page-header">
+    <div>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/errors" class="link">Error logs</a>
+        <span aria-hidden="true">/</span>
+        @if (project(); as project) {
+          <a [routerLink]="['/projects', project.publicId]" class="link">{{ project.name }}</a>
+          <span aria-hidden="true">/</span>
+        }
+        <span class="mono">{{ errorLog.errorClass }}</span>
+      </nav>
+      <h1 class="page-title mono">{{ errorLog.errorClass }}</h1>
+      @if (errorLog.message) {
+        <p class="page-subtitle">{{ errorLog.message }}</p>
+      }
+    </div>
+
+    <div class="actions">
+      <app-status-badge [status]="errorLog.status" />
+      @if (session.isAdmin() && errorLog.status !== resolvedStatus) {
+        <button
+          type="button"
+          class="btn btn--primary"
+          [disabled]="resolving()"
+          (click)="resolveDialog.open()"
+        >
+          {{ resolving() ? 'Resolving…' : '✓ Mark as resolved' }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <section class="card">
+    <dl class="details">
+      <div>
+        <dt>Occurrences</dt>
+        <dd class="stat">{{ errorLog.occurrences }}</dd>
+      </div>
+      <div>
+        <dt>First seen</dt>
+        <dd [title]="errorLog.firstSeenAt | date: 'medium'">
+          {{ errorLog.firstSeenAt | timeAgo }}
+        </dd>
+      </div>
+      <div>
+        <dt>Last seen</dt>
+        <dd [title]="errorLog.lastSeenAt | date: 'medium'">{{ errorLog.lastSeenAt | timeAgo }}</dd>
+      </div>
+      @if (errorLog.resolvedAt) {
+        <div>
+          <dt>Resolved at</dt>
+          <dd>{{ errorLog.resolvedAt | date: 'medium' }}</dd>
+        </div>
+      }
+      <div>
+        <dt>Transaction</dt>
+        <dd class="mono">{{ errorLog.transactionName || '—' }}</dd>
+      </div>
+      <div>
+        <dt>NewRelic error group</dt>
+        <dd class="mono">{{ errorLog.newRelicErrorGroupId || '—' }}</dd>
+      </div>
+      <div class="details__full">
+        <dt>Fingerprint</dt>
+        <dd class="mono text-xs break-all">{{ errorLog.fingerprint }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <h2 class="section-title">Stack trace</h2>
+  <section class="card">
+    @if (errorLog.stackTrace) {
+      <pre class="stack-trace">{{ errorLog.stackTrace }}</pre>
+    } @else {
+      <p class="text-muted">NewRelic did not provide a stack trace for the latest occurrence.</p>
+    }
+  </section>
+
+  <app-confirm-dialog
+    #resolveDialog
+    title="Mark as resolved"
+    message="The error will be marked as resolved. If the sync job sees it again it will be reopened automatically."
+    confirmLabel="Resolve"
+    (confirmed)="resolve()"
+  />
+}

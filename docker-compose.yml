@@ -1,0 +1,47 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: thomas-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+    networks:
+      - backend-network
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "5010:80"
+    container_name: thomas-api
+    environment:
+      # NewRelic credentials used by the error log sync job (never commit real values)
+      NewRelic__ApiKey: "REPLACE-WITH-A-NEWRELIC-USER-API-KEY"
+      NewRelic__AccountId: "0"
+      NewRelic__GraphQlEndpoint: "https://api.newrelic.com/graphql"
+      ErrorLogSync__Enabled: "true"
+      ErrorLogSync__IntervalMinutes: "5"
+    depends_on:
+      - mongodb
+    networks:
+      - backend-network
+  mongodb:
+    container_name: mongodb
+    image: mongo:7.0
+    restart: unless-stopped
+    hostname: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: "CHANGE_ME_Passw0rd!"
+      MONGO_INITDB_DATABASE: ThomasDev
+    ports:
+      - "27017:27017"
+    networks:
+        - backend-network
+
+networks:
+    backend-network:
+        driver: bridge

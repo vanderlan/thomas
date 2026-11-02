@@ -1,0 +1,23 @@
+﻿using GeminiCode.Thomas.Domain.Core.Authentication;
+using MediatR;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+
+namespace GeminiCode.Thomas.Application.Core.UseCases.Users.Notifications.UserPasswordChanged
+{
+    public class UserPasswordChangedNotificationHandler(
+        ILogger<UserPasswordChangedNotificationHandler> logger,
+        ICurrentUser currentUser)
+        : INotificationHandler<UserPasswordChangedNotification>
+    {
+        public async Task Handle(UserPasswordChangedNotification notification, CancellationToken cancellationToken)
+        {
+            logger.LogInformation("A notification {NotificationType} has been received. Notification details: {Notification}. Action performed by: {CurrentUserName}",
+                nameof(UserPasswordChangedNotification),
+                JsonConvert.SerializeObject(notification, Formatting.Indented),
+                currentUser.ToString());
+
+            await Task.CompletedTask;
+        }
+    }
+}

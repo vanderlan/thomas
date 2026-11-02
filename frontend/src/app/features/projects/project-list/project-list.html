@@ -1,0 +1,138 @@
+<header class="page-header">
+  <div>
+    <h1 class="page-title">Projects</h1>
+    <p class="page-subtitle">The portfolio monitored by the error log sync job.</p>
+  </div>
+  @if (session.isAdmin()) {
+    <a routerLink="/projects/new" class="btn btn--primary">+ New project</a>
+  }
+</header>
+
+<div class="toolbar">
+  <input
+    type="search"
+    class="input toolbar__search"
+    placeholder="Search by name…"
+    [value]="query()"
+    (change)="search(searchInput.value)"
+    (search)="search(searchInput.value)"
+    #searchInput
+    aria-label="Search projects by name"
+  />
+  @if (loading()) {
+    <span class="spinner" aria-label="Loading"></span>
+  }
+</div>
+
+<section class="card">
+  @if (result().items.length === 0 && !loading()) {
+    <div class="empty">
+      <p class="empty__title">No projects found</p>
+      <p class="empty__text">
+        @if (query()) {
+          Try another search.
+        } @else if (session.isAdmin()) {
+          Create the first project to start collecting its errors from NewRelic.
+        } @else {
+          Ask an administrator to register a project.
+        }
+      </p>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>GitHub repository</th>
+            <th>NewRelic id</th>
+            <th>PR branch</th>
+            <th>Last sync</th>
+            <th class="table__actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (project of result().items; track project.publicId) {
+            <tr>
+              <td>
+                <a class="link link--strong" [routerLink]="['/projects', project.publicId]">
+                  {{ project.name }}
+                </a>
+                @if (project.description) {
+                  <div class="text-muted text-sm">{{ project.description }}</div>
+                }
+              </td>
+              <td>
+                <a
+                  class="link mono"
+                  [href]="'https://github.com/' + project.gitHubRepository"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  {{ project.gitHubRepository }}
+                </a>
+              </td>
+              <td class="mono text-sm">{{ project.newRelicId }}</td>
+              <td class="mono text-sm">{{ project.priorityBranch }}</td>
+              <td
+                [title]="
+                  project.lastErrorSyncAt
+                    ? (project.lastErrorSyncAt | date: 'medium')
+                    : 'Never synchronized'
+                "
+              >
+                {{ project.lastErrorSyncAt | timeAgo }}
+              </td>
+              <td class="table__actions">
+                <div class="actions">
+                  <a class="btn btn--ghost btn--sm" [routerLink]="['/projects', project.publicId]">
+                    View
+                  </a>
+                  @if (session.isAdmin()) {
+                    <button
+                      type="button"
+                      class="btn btn--ghost btn--sm"
+                      [disabled]="syncing() !== null"
+                      (click)="sync(project)"
+                    >
+                      {{ syncing() === project.publicId ? 'Syncing…' : 'Sync errors' }}
+                    </button>
+                    <a
+                      class="btn btn--ghost btn--sm"
+                      [routerLink]="['/projects', project.publicId, 'edit']"
+                    >
+                      Edit
+                    </a>
+                    <button
+                      type="button"
+                      class="btn btn--ghost btn--sm btn--danger-text"
+                      (click)="askDelete(project, deleteDialog)"
+                    >
+                      Delete
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <app-pagination
+      [page]="page()"
+      [pageSize]="pageSize"
+      [total]="result().count"
+      (pageChange)="goToPage($event)"
+    />
+  }
+</section>
+
+<app-confirm-dialog
+  #deleteDialog
+  title="Delete project"
+  [message]="deleteMessage()"
+  confirmLabel="Delete"
+  [danger]="true"
+  (confirmed)="confirmDelete()"
+/>

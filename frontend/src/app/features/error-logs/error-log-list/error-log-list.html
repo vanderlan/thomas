@@ -1,0 +1,130 @@
+@if (!embedded()) {
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Error logs</h1>
+      <p class="page-subtitle">
+        The errors knowledge base, collected from NewRelic by the sync job and grouped by
+        fingerprint.
+      </p>
+    </div>
+  </header>
+}
+
+<div class="toolbar">
+  @if (!embedded()) {
+    <select
+      class="input"
+      [value]="selectedProjectId() ?? ''"
+      (change)="changeProject(projectSelect.value)"
+      #projectSelect
+      aria-label="Filter by project"
+    >
+      <option value="">All projects</option>
+      @for (project of projects(); track project.publicId) {
+        <option [value]="project.publicId">{{ project.name }}</option>
+      }
+    </select>
+  }
+
+  <select
+    class="input"
+    [value]="status() ?? ''"
+    (change)="changeStatus(statusSelect.value)"
+    #statusSelect
+    aria-label="Filter by status"
+  >
+    <option value="">All statuses</option>
+    @for (item of statuses; track item.value) {
+      <option [value]="item.value">{{ item.label }}</option>
+    }
+  </select>
+
+  <input
+    type="search"
+    class="input toolbar__search"
+    placeholder="Search by class or message…"
+    [value]="query()"
+    (change)="search(searchInput.value)"
+    (search)="search(searchInput.value)"
+    #searchInput
+    aria-label="Search errors by class or message"
+  />
+
+  @if (loading()) {
+    <span class="spinner" aria-label="Loading"></span>
+  }
+</div>
+
+<section class="card">
+  @if (result().items.length === 0 && !loading()) {
+    <div class="empty">
+      <p class="empty__title">No errors found</p>
+      <p class="empty__text">
+        @if (query() || status() !== null) {
+          Try other filters.
+        } @else {
+          The knowledge base is empty. Errors appear here after the sync job (or a manual sync)
+          runs.
+        }
+      </p>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Error</th>
+            @if (!embedded()) {
+              <th>Project</th>
+            }
+            <th>Status</th>
+            <th class="text-right">Occurrences</th>
+            <th>Last seen</th>
+            <th>First seen</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (errorLog of result().items; track errorLog.publicId) {
+            <tr>
+              <td>
+                <a class="link link--strong mono" [routerLink]="['/errors', errorLog.publicId]">
+                  {{ errorLog.errorClass }}
+                </a>
+                @if (errorLog.message) {
+                  <div class="text-muted text-sm truncate" [title]="errorLog.message">
+                    {{ errorLog.message }}
+                  </div>
+                }
+                @if (errorLog.transactionName) {
+                  <div class="text-muted text-xs mono">{{ errorLog.transactionName }}</div>
+                }
+              </td>
+              @if (!embedded()) {
+                <td>
+                  <a class="link" [routerLink]="['/projects', errorLog.projectId]">
+                    {{ projectName(errorLog.projectId) || errorLog.projectId }}
+                  </a>
+                </td>
+              }
+              <td><app-status-badge [status]="errorLog.status" /></td>
+              <td class="text-right">{{ errorLog.occurrences }}</td>
+              <td [title]="errorLog.lastSeenAt | date: 'medium'">
+                {{ errorLog.lastSeenAt | timeAgo }}
+              </td>
+              <td [title]="errorLog.firstSeenAt | date: 'medium'">
+                {{ errorLog.firstSeenAt | timeAgo }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <app-pagination
+      [page]="page()"
+      [pageSize]="pageSize"
+      [total]="result().count"
+      (pageChange)="goToPage($event)"
+    />
+  }
+</section>

@@ -1,0 +1,46 @@
+<div class="shell">
+  <aside class="shell__sidebar">
+    <a class="brand" routerLink="/projects">
+      <span class="brand__mark" aria-hidden="true">T</span>
+      <div>
+        <span class="brand__title">Thomas</span>
+        <span class="brand__subtitle">Errors knowledge base</span>
+      </div>
+    </a>
+
+    <nav class="nav" aria-label="Main">
+      <a routerLink="/projects" routerLinkActive="nav__link--active" class="nav__link">
+        <span class="nav__icon" aria-hidden="true">▣</span> Projects
+      </a>
+      <a routerLink="/errors" routerLinkActive="nav__link--active" class="nav__link">
+        <span class="nav__icon" aria-hidden="true">⚠</span> Error logs
+      </a>
+    </nav>
+
+    <div class="shell__sidebar-footer">
+      <button
+        type="button"
+        class="btn btn--ghost btn--block"
+        (click)="theme.toggle()"
+        [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+      >
+        {{ theme.isDark() ? '☀ Light mode' : '☾ Dark mode' }}
+      </button>
+
+      @if (session.user(); as user) {
+        <div class="user">
+          <span class="user__name">{{ user.name || user.email }}</span>
+          <span class="user__role">{{ user.role }}</span>
+        </div>
+      }
+
+      <button type="button" class="btn btn--ghost btn--block" (click)="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="shell__content">
+    <router-outlet />
+  </main>
+
+  <app-toasts />
+</div>

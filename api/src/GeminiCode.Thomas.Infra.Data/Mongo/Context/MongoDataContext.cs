@@ -1,0 +1,151 @@
+using System;
+using System.Collections.Generic;
+using System.Linq.Expressions;
+using System.Threading;
+using System.Threading.Tasks;
+using GeminiCode.Thomas.Domain.Core.Entities;
+using GeminiCode.Thomas.Infra.Data.Mongo.Configuration;
+using GeminiCode.Thomas.Infra.Data.Mongo.Mapping;
+using MongoDB.Driver;
+
+namespace GeminiCode.Thomas.Infra.Data.Mongo.Context;
+
+/// <summary>
+/// A unit of work aware wrapper of <see cref="IMongoDatabase"/>.
+/// The write operations are kept in memory until <see cref="SaveChangesAsync"/> is called,
+/// keeping the same behaviour of the Entity Framework implementation (CreatedAt, LastUpdated
+/// and PublicId are assigned on save).
+/// </summary>
+public class MongoDataContext
+{
+    private readonly List<IMongoPendingWrite> _pendingWrites = [];
+
+    public MongoDataContext(IMongoClient mongoClient, MongoDbOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(mongoClient);
+        ArgumentNullException.ThrowIfNull(options);
+
+        MongoMappingConfiguration.Configure();
+
+        Client = mongoClient;
+        Database = mongoClient.GetDatabase(options.DatabaseName);
+    }
+
+    public IMongoClient Client { get; }
+
+    public IMongoDatabase Database { get; }
+
+    #region Collections
+    public IMongoCollection<User> Users => GetCollection<User>();
+    public IMongoCollection<RefreshToken> RefreshTokens => GetCollection<RefreshToken>();
+    public IMongoCollection<Project> Projects => GetCollection<Project>();
+    public IMongoCollection<ErrorLog> ErrorLogs => GetCollection<ErrorLog>();
+    #endregion
+
+    public bool HasPendingWrites => _pendingWrites.Count > 0;
+
+    /// <summary>
+    /// The session the pending writes are bound to. When set, every write executed by
+    /// <see cref="SaveChangesAsync"/> takes part of the transaction of the session.
+    /// </summary>
+    public IClientSessionHandle CurrentSession { get; private set; }
+
+    public IMongoCollection<T> GetCollection<T>() where T : BaseEntity
+    {
+        return Database.GetCollection<T>(MongoMappingConfiguration.GetCollectionName<T>());
+    }
+
+    public void Insert<T>(T entity) where T : BaseEntity
+    {
+        AddPendingWrite(entity, MongoWriteOperation.Insert);
+    }
+
+    public void Replace<T>(T entity) where T : BaseEntity
+    {
+        AddPendingWrite(entity, MongoWriteOperation.Replace);
+    }
+
+    public void Delete<T>(T entity) where T : BaseEntity
+    {
+        AddPendingWrite(entity, MongoWriteOperation.Delete);
+    }
+
+    /// <summary>
+    /// Stages the removal of every document that matches the predicate. Like the other
+    /// writes, it is only executed on <see cref="SaveChangesAsync"/>.
+    /// </summary>
+    public void DeleteMany<T>(Expression<Func<T, bool>> predicate) where T : BaseEntity
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        _pendingWrites.Add(new MongoPendingDeleteMany<T>(Builders<T>.Filter.Where(predicate)));
+    }
+
+    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        if (!HasPendingWrites)
+            return 0;
+
+        AddTimestamps();
+
+        var affectedDocuments = 0;
+
+        foreach (var pendingWrite in _pendingWrites)
+        {
+            affectedDocuments += await pendingWrite.ExecuteAsync(this, cancellationToken);
+        }
+
+        _pendingWrites.Clear();
+
+        return affectedDocuments;
+    }
+
+    public void DiscardChanges()
+    {
+        _pendingWrites.Clear();
+    }
+
+    /// <summary>
+    /// Binds the pending writes to the given session so they take part of its transaction.
+    /// Pass <c>null</c> to detach the context from the session.
+    /// </summary>
+    public void UseSession(IClientSessionHandle session)
+    {
+        CurrentSession = session;
+    }
+
+    private void AddPendingWrite<T>(T entity, MongoWriteOperation operation) where T : BaseEntity
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+
+        _pendingWrites.Add(new MongoPendingWrite<T>(entity, operation));
+    }
+
+    private void AddTimestamps()
+    {
+        foreach (var pendingWrite in _pendingWrites)
+        {
+            if (pendingWrite.Operation is MongoWriteOperation.Delete or MongoWriteOperation.DeleteMany)
+                continue;
+
+            if (pendingWrite.Operation == MongoWriteOperation.Insert)
+            {
+                pendingWrite.Entity.CreatedAt = UtcNow();
+                pendingWrite.Entity.PublicId = Guid.NewGuid().ToString();
+            }
+
+            pendingWrite.Entity.LastUpdated = UtcNow();
+        }
+    }
+
+    /// <summary>
+    /// BSON dates have millisecond precision, so the timestamps are truncated to keep the
+    /// in memory entity exactly equal to the persisted document.
+    /// </summary>
+    private static DateTime UtcNow()
+    {
+        var utcNow = DateTime.UtcNow;
+
+        return new DateTime(utcNow.Ticks - (utcNow.Ticks % TimeSpan.TicksPerMillisecond), DateTimeKind.Utc);
+    }
+}
